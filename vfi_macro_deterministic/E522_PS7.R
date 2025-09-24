@@ -1,0 +1,67 @@
+### Author: Jihuan Zhang 'Aaron' ###
+
+# Housekeeping
+rm(list = ls()); cat("\f")
+
+# Parameters setup
+alpha <- 1/3 # capital share
+beta <- 0.96 # discount factor
+delta <- 1 # depreciation rate
+f <- function(k){k^alpha} # production function
+u <- function(c){log(c)} # utility function
+
+# Capital grid setup
+kss <- (((1/beta)+delta-1)/alpha)^(1/(alpha-1)) # Steady State
+css <- f(kss)+delta * kss
+kappa <- 0.9
+N <- 200 # number of grid points
+kgrid <- seq((1-kappa)*kss,(1+kappa)*kss,len=N)
+
+# Iteration setup
+value <- rep(0,N)
+tolerance <- 1e-5
+distance <- tolerance+1
+iter <- 0 # iteration counts
+v_old <- rep(0,N)
+v_new <- rep(0,N)
+optimal_position <- rep(0,N)
+
+# Value function iteration
+while(distance>tolerance){
+  iter <- iter+1
+  for (ik in 1:N) {
+    k <- kgrid[ik]
+    for (ikp in 1:N) {
+      kp <- kgrid[ikp]
+      c <- f(k)+(1-delta)*k-kp
+      ifelse(c>0, value[ikp] <- u(c)+beta*v_old[ikp], value[ikp] <- -1e9)
+    }
+    v_new[ik] <- max(value) # given kgrid[ik], the optimal value is v_new[ik]
+    optimal_position[ik] <- which.max(value)
+  }
+  distance <- max(abs((v_new-v_old)/v_old))
+  v_old <- v_new # please understand why this line must be below the above line
+}
+
+# Policy Function
+k_policy <- rep(0,N)
+c_policy <- rep(0,N)
+for (i in 1:N) {
+  k_policy[i] = kgrid[optimal_position[i]]; # k prime is a function of k
+  c_policy[i] = kgrid[i]^alpha + (1-delta)*kgrid[i] - k_policy[i]; # c is a function of k
+}
+
+# True value function
+ab <- alpha*beta
+c1 <- (log(1-ab)+(log(ab)*ab/(1-ab)))/(1-beta)
+c2 <- alpha/(1-ab)
+v_true <- rep(0,N)
+for (i in 1:N) {
+  v_true[i] <- c1+c2*log(kgrid[i])
+}
+
+# Plots
+plot(kgrid,v_old,type="l",xlab="k",ylab="V(k)",main="Value Function",col="red")
+lines(kgrid,v_true,col="green")
+plot(kgrid,k_policy,type="l",xlab="k",ylab="k'(k)",main="Capital Policy Function",col="red")
+plot(kgrid,c_policy,type="l",xlab="k",ylab="c(k)",main="Consumption Policy Function",col="red")
